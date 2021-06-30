@@ -1,3 +1,5 @@
+import sys
+
 import random
 import time
 
@@ -59,7 +61,8 @@ class User:
 
     def register(self):
         if not self.user_exists() and not self.signedin:
-            new_user = dict(username=self.username, pin=self.pin, balance=dict(GHS=0, USD=0))
+            # We assume the user deposited some cash
+            new_user = dict(username=self.username, pin=self.pin, balance=dict(GHS=random.randint(0, 99999), USD=random.randint(0, 99999)))
             self.ledger.users.append(new_user)     
         return self.login()
 
@@ -105,7 +108,7 @@ class Transaction:
         print_header()
         print("\n")
         print("Username: " + self.user.username)
-        print("Transactions 📜")
+        print("Transactions")
         print("--------------")
         for tr in self.ledger.transactions:
             if tr['username'] == self.user.username and tr['pin'] == self.user.pin:
@@ -117,34 +120,7 @@ class Transaction:
         print("------End of Transaction------")
 
 
-def run():
-    print_header()
-    ledger = Ledger()
-    ledger.users = gen_users()
-
-    print('Hello ! Welcome to PYBANK !')
-    print('Please login to proceed.')
-    
-    username = input('Please enter your username: ')
-    while len(username) < 3:
-        username = input("Invalid username! Try Again: ")
-    pin = input('Please enter your 4 digit pin: ')
-    while not (pin.isnumeric() and len(pin) == 4):
-        pin = input('Invalid pin! Try again: ')
-
-    print("\nLogging in")
-    auth = User(username, pin, ledger)
-
-    if not auth.user_exists():
-        print("\n It seems you are yet to open an acount with us.")
-        print("If you would like to  register with us type yes.")
-        new_account = input("Create an account?")
-        if new_account.lower() == "yes":
-            auth.register()
-        else:
-            run()
-    else:
-        auth.login()
+def main_menu(auth, ledger):
     print("\n Logged in as: %s" % auth.username)
     print("##########################################")
     print("1) Withdraw Cash")
@@ -162,19 +138,70 @@ def run():
         rcpts = input("Do you want a Receipt?")
         if rcpts.lower() == "yes":
             transactions.reciept()
+            go_back = input("Type 9 to go back to the previous menu.")
+            if go_back == str(9):
+                main_menu(auth, ledger)
         else:
-            run()
+            main_menu(auth, ledger)
     elif main_opt == str(2):
         print("/n########################")
         print("Your account balance is: " + str(auth.check_balance()))
+        go_back = input("Type 9 to go back to the previous menu.")
+        if go_back == str(9):
+            main_menu(auth, ledger)
     elif main_opt == str(3):
         print("/n########################")
         transactions = Transaction(auth, ledger, 0)
         transactions.mini_statement()
+        go_back = input("Type 9 to go back to the previous menu.")
+        if go_back == str(9):
+            main_menu(auth, ledger)
+    elif main_opt == str(4):
+        auth.logout()
+        print_header()
+        do_auth(ledger)
+    else:
+        auth.logout()
+        print_header()
+        do_auth(ledger)
 
+def do_auth(ledger):
+    username = input('Please enter your username: ')
+    while len(username) < 3:
+        username = input("Invalid username! Try Again: ")
+    pin = input('Please enter your 4 digit pin: ')
+    while not (pin.isnumeric() and len(pin) == 4):
+        pin = input('Invalid pin! Try again: ')
+
+    print("\nLogging in")
+    auth = User(username, pin, ledger)
+
+    if not auth.user_exists():
+        print("\n It seems you are yet to open an account with us.")
+        print("If you would like to  register with us type yes.")
+        new_account = input("Create an account?")
+        if new_account.lower() == "yes":
+            auth.register()
+        else:
+            do_auth(ledger)
+    else:
+        auth.login()
+    main_menu(auth, ledger)
 
 if __name__ == '__main__':
-    run()
+    try:
+        print_header()
+        ledger = Ledger()
+
+        # Optional for generating users
+        ledger.users = gen_users()
+
+        print('Hello ! Welcome to PYBANK !')
+        print('Please login to proceed.')
+        do_auth(ledger)
+    except KeyboardInterrupt:
+        # Exit gracefully. Dignity intact
+        sys.exit()
 
 
 
